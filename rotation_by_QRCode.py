@@ -5,7 +5,7 @@ import os
 #from skimage import data,segmentation,measure,morphology,color
 import cv2
 import math
-def rotation_axis(ymin,ymax,xmin,xmax,angle,img,rotated_img,flage,scale=0.5):
+def rotation_axis(xmin,ymin,xmax,ymax,angle,img,rotated_img,flage,scale=0.5):
 
     '''
     x′=(x−x0)∗cos(p)+(y−y0)∗sin(p)+x0
@@ -22,8 +22,6 @@ def rotation_axis(ymin,ymax,xmin,xmax,angle,img,rotated_img,flage,scale=0.5):
     '''
     print("***********angle:", angle)
     #angle += np.pi/90
-
-    axis_lst = []
     (h,w) = img.shape[:2]
     centr_h = img.shape[0] / 2
     centr_w = img.shape[1] / 2
@@ -65,7 +63,7 @@ def rotation_axis(ymin,ymax,xmin,xmax,angle,img,rotated_img,flage,scale=0.5):
 
         cv2.imshow("", rotated_img)
         cv2.waitKey(2000)
-    return [int(xmin[0,0]),int(ymin[0,0]),int(xmax[0,0]),int(ymax[0,0])],axis_lst
+    return [int(xmin[0,0]),int(ymin[0,0]),int(xmax[0,0]),int(ymax[0,0])]
 def get_rotation_axis_by_cv2(ymin,ymax,xmin,xmax,angle,img,rotated_img,flage,scale=0.5):
     axis_lst = []
     (h, w) = img.shape[:2]
@@ -215,7 +213,7 @@ def rotation_by_QRcode(axis_list,rotated_img,angle,scale,flage=True):
             turn = 180
             global_angle = (angle*180/np.pi + 180)/180*np.pi
     alter_rotated = rotate(rotated_img, turn)
-    axis_lst, _ = rotation_axis(ymin, ymax, xmin, xmax, turn/180*np.pi, rotated_img,
+    axis_lst= rotation_axis(xmin, ymin, xmax, ymax, turn/180*np.pi, rotated_img,
                                 alter_rotated, flage)
     qrimg = alter_rotated[axis_lst[1]:axis_lst[3], axis_lst[0]: axis_lst[2]]
     if flage:
@@ -261,7 +259,7 @@ def pick_up_content(img, lines, aline, axis_lst,flag,trail):
         yy = int(k * axis_lst[0] + q)
         #y = line[0][0] * np.cos(line[0][1])
         if yy < axis_lst[1] and line1 == 0:
-              line1 = yy
+              line1 = min(max(yy,0),img.shape[0])
               if global_theta==0:
                   global_theta += theta
               else:
@@ -274,7 +272,7 @@ def pick_up_content(img, lines, aline, axis_lst,flag,trail):
 
         if yy >=  axis_lst[3] and yy < img.shape[0] :
             if 0 < yy - axis_lst[3] < img.shape[0]/5 and line2 == 0:
-                line2 = yy
+                line2 = min(max(yy,0),img.shape[0])
                 global_theta = theta
                 if global_theta == 0:
                     global_theta += theta
@@ -286,7 +284,7 @@ def pick_up_content(img, lines, aline, axis_lst,flag,trail):
                     cv2.imshow("result", img)
                     cv2.waitKey(500)
             elif line3 == 0:
-                line3 = yy #[[y1,0],[y2,img.shape[1]]]
+                line3 = min(max(yy,0),img.shape[0]) #[[y1,0],[y2,img.shape[1]]]
                 global_theta = theta
                 if global_theta == 0:
                     global_theta += theta
@@ -310,12 +308,14 @@ def pick_up_content(img, lines, aline, axis_lst,flag,trail):
          line2 = int(max(int(axis_lst[1]/2+axis_lst[3]), img.shape[0]/2))
     if line3 == 0:
          line3 = int(img.shape[0] - axis_lst[1]/2)
-    if line2-line1 > 30 and line3-line2 > 30 or trail > 4:
+    if (line2-line1 > 30 and line3-line2 > 30) or trail > 4:
         return line1, line2, line3, global_theta
     else:
         lines, aline = alter_HoughLines(img, 10, 2, 100, flag)
         if flag:
             draw_img = draw_line(lines, img, flag, (0, 255, 0))
+            cv2.imshow("",draw_img)
+            cv2.waitKey(100)
         return pick_up_content(img, lines, aline, axis_lst, flag, trail)
 
 def crop_round_region(axis_lst, img, flage=False, scale=0.3):
@@ -335,57 +335,55 @@ def crop_round_region(axis_lst, img, flage=False, scale=0.3):
     receive = img_cp[ymin_cp:ymax_cp, :]
     #cv2.imshow("",receive)
     #cv2.waitKey(2000)
-    crop_distance = max((ymax_cp-ymin_cp),(xmax_cp-xmin_cp))
-    
-    boxx_ymin = int(max(ymin_cp - crop_distance*0.6, 0))
-    boxx_ymax = int(min(ymax_cp + crop_distance*1.5, img_cp.shape[0]))
+    #crop_distance = max((ymax_cp-ymin_cp),(xmax_cp-xmin_cp))
+    crop_distance = img.shape[0]/100
+    boxx_ymin = int(max(ymin_cp - crop_distance*1.5, 0))
+    boxx_ymax = int(min(ymax_cp + crop_distance*4, img_cp.shape[0]))
     print("box_y:", boxx_ymin, boxx_ymax)
     crop_image = img_cp[int(boxx_ymin):int(boxx_ymax), :]
     if flage:
         cv2.imshow("",crop_image)
         cv2.waitKey(200)
-    lines, aline = alter_HoughLines(crop_image, 10, 2, 170, flage)
+    lines, aline = alter_HoughLines(crop_image, 10, 2, 150, flage)
     #draw_img = draw_line(lines, crop_image, True, (0, 255, 0))
     axis_lst_cp = [xmin_cp, ymin_cp-boxx_ymin, xmax_cp, ymax_cp-boxx_ymin]
     line1, line2, line3, thero = pick_up_content(crop_image, lines, aline, axis_lst_cp, flage,0)
     #draw_img = draw_line(_, draw_img, flage, (0, 0, 255))
-    if thero != 0:
-        thero = (thero-1.57) * 180 / np.pi
-        rotated_ori_img = rotate(img, thero)
-    else:
-        rotated_ori_img = img
+    #if thero != 1.57:
+    thero_ori = (thero-1.57) * 180 / np.pi
+    rotated_ori_img = rotate(img, thero_ori)
+    #else:
+        #rotated_ori_img = img
 
-    line1_ori = int((line1 + boxx_ymin - 5)/scale)
-    line1_end = int((line2 + boxx_ymin + 5)/scale)
-    line2_ori = int((line2 + boxx_ymin - 5)/scale)
-    line3_ori = int((line3 + boxx_ymin + 5)/scale)
-    region1 = rotated_ori_img[line1_ori:line1_end, :]
-    region2 = rotated_ori_img[line2_ori:line3_ori, :]
-    crop_ymin = int(ymin_cp - (line1_ori * scale))
-    crop_ymax = int(ymax_cp - (line1_ori * scale))
-    crop_xmin = int(xmin_cp)
-    crop_xmax = int(xmax_cp)
+    line1_ori = int((line1 + boxx_ymin)/scale)
+    line1_end = int((line2 + boxx_ymin)/scale)
+    line2_ori = int((line2 + boxx_ymin)/scale)
+    line3_ori = int((line3 + boxx_ymin)/scale)
+    ori_line_axis = rotation_axis(xmin,line1_ori, xmax,line1_end,(thero-1.57), img, rotated_ori_img, False, scale=0.5)
+    region1 = rotated_ori_img[ori_line_axis[1]:ori_line_axis[3], :]
+    ori_line_axis = rotation_axis(xmin, line2_ori,xmax, line3_ori, (thero-1.57), img, rotated_ori_img, False, scale=0.5)
+    region2 = rotated_ori_img[ori_line_axis[1]:ori_line_axis[3], :]
+    ori_box_axis = rotation_axis(xmin, ymin, xmax, ymax, (thero-1.57), img, rotated_ori_img, False, scale=0.5)
+    crop_ymin = int(ori_box_axis[1] - ori_line_axis[1])
+    crop_ymax = int(ori_box_axis[3] - ori_line_axis[1])
+    crop_xmin = int(ori_box_axis[0])
+    crop_xmax = int(ori_box_axis[2])
     crop_axis = [crop_xmin, crop_xmax, crop_ymin, crop_ymax]
 
     if flage:
-        region1 = img_cp[int(line1_ori*scale):int(line1_end*scale), :]
-        cv2.imshow("rotation1:", region1)
+        cv2.imshow("rotation1:", cv2.resize(region1,(int(region1.shape[1]*scale), int(region1.shape[0]*scale))))
         cv2.waitKey(500)
-
-        cv2.rectangle(region1, (crop_xmin, crop_ymin), (crop_xmax, crop_ymax), (255, 255, 255), 2)
-        cv2.imshow("", region1)
+        crop_axis = (np.array(crop_axis)*scale).astype(int)
+        cv2.rectangle(region1, (crop_axis[0], crop_axis[1]), (crop_axis[2], crop_axis[3]), (255, 255, 255), 2)
+        cv2.imshow("rotation2:", cv2.resize(region2,(int(region2.shape[1]*scale), int(region2.shape[0]*scale))))
         cv2.waitKey(2000)
-
-        region2 = img_cp[int(line2_ori*scale):int(line3_ori*scale), :]
-        cv2.imshow("rotation2:", region2)
-        cv2.waitKey(500)
 
     return rotated_ori_img, region1, region2, crop_axis#crop_image
 
 # def hough_line_round_region(img,tflage=False):
 #     lines, _ = alter_HoughLines(img,10,flage)
     
-def read_label_box(file_dir,label_info_dic,img,class_id):
+def read_label_box(file_dir,label_info_dic,img,class_id,paihang=1):
     height = img.shape[0]
     width = img.shape[1]
     resize_ratio = 0.5
@@ -395,29 +393,35 @@ def read_label_box(file_dir,label_info_dic,img,class_id):
     detection_boxes = label_info_dic[0].get("detection_boxes")
     detection_scores = label_info_dic[0].get("detection_scores")
     detection_classes = label_info_dic[0].get("detection_classes")
-    index_zabar = np.where(detection_classes == class_id)[0]
+    if paihang == 1:
+        index_zabar = np.where(detection_classes == class_id)[0][0]
+    elif paihang == 2 and len(np.where(detection_classes == class_id)[0]) > 1:
+        index_zabar = np.where(detection_classes == class_id)[0][1]
+    else:
+        index_zabar = np.where(detection_classes == class_id)[0][0]
     ymin_lst = []
     ymax_lst = []
     xmin_lst = []
     xmax_lst = []
     zbar_lst = []
-    for i in index_zabar[:1]:
-        ymin = detection_boxes[i][0]
-        xmin = detection_boxes[i][1]
-        ymax = detection_boxes[i][2]
-        xmax = detection_boxes[i][3]
-        #cv2.rectangle(cimg, (int(xmin*width*resize_ratio),int(ymin*resize_ratio*height)), (int(xmax*width*resize_ratio),int(ymax*resize_ratio*height)), (0, 255, 0), 2)
-        #cv2.drawContours(cimg, [int(xmin*width*resize_ratio),int(ymin*resize_ratio*height), int(xmax*width*resize_ratio),int(ymax*resize_ratio*height)], -1, 255, thickness=-1)
-        zbar = cimg[int(ymin*resize_ratio*height):int(ymax*resize_ratio*height), int(xmin*width*resize_ratio):int(xmax*resize_ratio*width)]
-        #cv2.imshow("",zbar)
-        #cv2.waitKey(200)
-        ymin_lst.append(ymin*height)
-        ymax_lst.append(ymax*height)
-        xmin_lst.append(xmin*width)
-        xmax_lst.append(xmax*width)
-        zbar_lst.append(zbar)
+    #for i in index_zabar:
+    ymin = detection_boxes[index_zabar][0]
+    xmin = detection_boxes[index_zabar][1]
+    ymax = detection_boxes[index_zabar][2]
+    xmax = detection_boxes[index_zabar][3]
+    #cv2.rectangle(cimg, (int(xmin*width*resize_ratio),int(ymin*resize_ratio*height)), (int(xmax*width*resize_ratio),int(ymax*resize_ratio*height)), (0, 255, 0), 2)
+    #cv2.drawContours(cimg, [int(xmin*width*resize_ratio),int(ymin*resize_ratio*height), int(xmax*width*resize_ratio),int(ymax*resize_ratio*height)], -1, 255, thickness=-1)
+    zbar = cimg[int(ymin*resize_ratio*height):int(ymax*resize_ratio*height), int(xmin*width*resize_ratio):int(xmax*resize_ratio*width)]
+    #cv2.imshow("",zbar)
+    #cv2.waitKey(2000)
+    ymin_lst.append(ymin*height)
+    ymax_lst.append(ymax*height)
+    xmin_lst.append(xmin*width)
+    xmax_lst.append(xmax*width)
+    zbar_lst.append(zbar)
 
-    return ymin_lst, ymax_lst,xmin_lst,xmax_lst, zbar
+    return xmin_lst, ymin_lst,xmax_lst,ymax_lst, zbar
+
 
 def read_QRCode_label(file_dir, label_file, class_id=2):
     result_lst = []
@@ -425,9 +429,9 @@ def read_QRCode_label(file_dir, label_file, class_id=2):
     QRimg_lst = []
     if os.path.isdir(file_dir) is False:
         img = cv2.imread(file_dir)
-        ymin, ymax, xmin, xmax, zbar = read_label_box(file_dir, label_file, img, 2)
+        xmin, ymin, xmax, ymax, zbar = read_label_box(file_dir, label_file, img, 2)
         rotated_img, angle, _, _ = draw_line_rotation_main(file_dir, flage=False)
-        axis_lst, _ = rotation_axis(ymin[0], ymax[0], xmin[0], xmax[0], angle, img, rotated_img, flage=False)
+        axis_lst = rotation_axis(xmin[0], ymin[0], xmax[0], ymax[0], angle, img, rotated_img, flage=False)
         alter_rotated, global_angle, QRimg = rotation_by_QRcode(axis_lst, rotated_img, angle, 0.5,flage=False)
         result_lst.append(alter_rotated)
         angle_lst.append(global_angle)
@@ -439,9 +443,9 @@ def read_QRCode_label(file_dir, label_file, class_id=2):
             # img_name = "00524.jpg"
             img = cv2.imread(os.path.join(file_dir, img_name))
             label_info_dic = label_info.get(img_name)
-            ymin, ymax, xmin, xmax, zbar = read_label_box(file_dir, label_info_dic, img, class_id)
+            xmin, ymin, xmax, ymax, zbar = read_label_box(file_dir, label_info_dic, img, class_id)
             rotated_img, angle, _, _ = draw_line_rotation_main(os.path.join(file_dir, img_name), flage=False)
-            axis_lst, _ = rotation_axis(ymin[0], ymax[0], xmin[0], xmax[0], angle, img, rotated_img, flage=False)
+            axis_lst = rotation_axis(xmin[0], ymin[0], xmax[0], ymax[0], angle, img, rotated_img, flage=False)
             alter_rotated, global_angle, QRimg = rotation_by_QRcode(axis_lst, rotated_img, angle, 0.5,flage=False)
             result_lst.append(alter_rotated)
             angle_lst.append(global_angle)
@@ -456,16 +460,23 @@ def read_receive_label(file_dir, label_file, class_id):
     QR_img_lst = []
     for img_name, label_info_dic in label_info.items():
         print("img_name:", img_name)
-        #img_name = "00180-1 (35).jpg"
+        img_name = "00504.jpg"
         label_info_dic = label_info.get(img_name)
         img = cv2.imread(os.path.join(file_dir, img_name))
-        ymin, ymax, xmin, xmax, zbar = read_label_box(file_dir, label_info_dic, img, class_id)
         alter_rotated_lst, global_angle_lst, QR_img = read_QRCode_label(os.path.join(file_dir, img_name), label_info_dic)
+
+        xmin, ymin, xmax, ymax, zbar = read_label_box(file_dir, label_info_dic, img, class_id,1)
+        xmin1, ymin1, xmax1, ymax1, zbar1 = read_label_box(file_dir, label_info_dic, img, class_id,2)
         alter_rotated = alter_rotated_lst[0]
         global_angle = global_angle_lst[0]
-        axis_lst, _ = rotation_axis(ymin[0], ymax[0], xmin[0], xmax[0], global_angle, img, alter_rotated,
+        axis_lst = rotation_axis(xmin[0], ymin[0], xmax[0], ymax[0], global_angle, img, alter_rotated,
                                     flage=False)
-        all_img, receive_img, sender_img,crop_axis = crop_round_region(axis_lst, alter_rotated, flage=False)
+        axis_lst1 = rotation_axis(xmin1[0], ymin1[0], xmax1[0], ymax1[0], global_angle, img, alter_rotated,
+                                    flage=False)
+        if axis_lst[1] <= axis_lst1[1]:
+            all_img, receive_img, sender_img,crop_axis = crop_round_region(axis_lst, alter_rotated, flage=False)
+        else:
+            all_img, receive_img, sender_img, crop_axis = crop_round_region(axis_lst1, alter_rotated, flage=False)
         # all_img_lst.append(all_img)
         # receive_img_lst.append(receive_img)
         # sender_img_lst.append(sender_img)

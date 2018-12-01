@@ -112,7 +112,7 @@ def planB_draw_line(img,result,lines):
             img = rotate(img, theta / np.pi * 180 - 90)
 
 def draw_line(lines,img,flag=False, color=(0,0,255)):
-    result = img.copy()
+    result = img
     for line in lines:
         rho, theta = line[0]
         #print("theta:", theta, "angle:", theta * 180 / np.pi)
@@ -154,14 +154,14 @@ def alter_HoughLines(image,high_thre, low_thre, init_threshold, flage=False):
             if lines is not None:
                 theta = lines[0, 0, 1]
                 rho = lines[0, 0, 0]
-                lines = np.array([[rho, theta]])
-                aline = lines
+                lines = np.array([[[rho, theta]]])
+                aline = lines[0]
                 break
             else:
                 theta = 0
                 rho = 20
-                lines = np.array([[rho, theta]])
-                aline = lines
+                lines = np.array([[[rho, theta]]])
+                aline = lines[0]
                 break
         if lines is None:
             print("in the planB")
@@ -172,10 +172,11 @@ def alter_HoughLines(image,high_thre, low_thre, init_threshold, flage=False):
             edges = cv2.Canny(thresh, 50, 150, apertureSize=3)
             lines = cv2.HoughLines(edges, 1, np.pi / 180, 118)
             if lines is None:
-                thre = 50
-                while lines is None or thre < 255:
+                thre = 0
+                while lines is None and thre < 255:
                     print("in the planC")
-                    thre = trail * 10
+                    thre = 50
+                    thre += trail * 10
                     trail += 1
                     if trail > 10:
                         break
@@ -208,10 +209,11 @@ def alter_HoughLines(image,high_thre, low_thre, init_threshold, flage=False):
             aline = np.array([[rho, theta]])
         else:
             print("in the planE")
-            thre = 85
-            while len(lines) > high_thre or thre < 255:
+            thre = 0
+            while len(lines) > high_thre and thre < 255:
                 print("in the planF")
-                thre = trail * 20
+                thre = 30
+                thre += trail * 20
                 trail += 1
                 if trail > 10:
                     break
