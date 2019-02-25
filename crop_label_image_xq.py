@@ -9,8 +9,8 @@ file_list.sort()
 # b_list = os.listdir(dir_b)
 # b_list.sort()
 flag = 0
-write_txt = open('./defp_2.19_val.txt','w')
-for _,imga in enumerate(file_list[120:]):
+write_txt = open('./defp_2.19_train_crop.txt','w')
+for _,imga in enumerate(file_list[:120]):
     # for _,imga in enumerate(os.listdir(os.path.join(dir,file))):
         #for b_idx, imgb in enumerate(b_list):
         content_a = cv2.imread(os.path.join(img_dir,imga))
@@ -62,13 +62,19 @@ for _,imga in enumerate(file_list[120:]):
                                 # cv2.waitKey(700)
                                 if line_txt.split(':')[0].split('.')[0] =="":
                                     print(line_txt)
-                                cv2.imwrite("/home/gytang/project/dataset/2019.1.30/val/crop_jpg/"+
+                                if st == "":
+                                    continue
+
+                                if st =="\n":
+                                    continue
+                                cv2.imwrite("/home/gytang/project/dataset/2019.1.30/crop_train2/"+
                                             line_txt.split(':')[0].split('.')[0]+'_'+str(flag)+'.jpg',crop_lst[si])
+
                                 if '\n' not in st:
                                     write_txt.write(
-                                        line_txt.split(':')[0].split('.')[0] + '_' + str(flag) + '.jpg' + ':'+st+'\n')
+                                        '/iqubicdata/workspace/tanggy/project/rcnn/dataset/2019.1.30/train/'+line_txt.split(':')[0].split('.')[0] + '_' + str(flag) + '.jpg' + ':'+st+'\n')
                                 else:
-                                    write_txt.write(
+                                    write_txt.write('/iqubicdata/workspace/tanggy/project/rcnn/dataset/2019.1.30/train/'+
                                         line_txt.split(':')[0].split('.')[0] + '_' + str(
                                             flag) + '.jpg' + ':' + st)
 
