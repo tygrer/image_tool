@@ -2,10 +2,10 @@ import os
 import numpy as np
 
 
-charset = open('/home/gytang/project/rcnn/words/chinese_word_list_kuaidi.txt', encoding='utf8').read().strip('\r\n')
+charset = open('/home/gytang/gytang/PycharmProjects/image_tool/chinese_word_list.txt', encoding='utf8').read().strip('\r\n')
 charset = [c for c in charset]
 UNKNOWN_INDEX = len(charset)
-
+print(UNKNOWN_INDEX)
 UNKNOWN_TOKEN = chr(9617) # '░'
 charset.append(UNKNOWN_TOKEN)
 encode_maps = {}

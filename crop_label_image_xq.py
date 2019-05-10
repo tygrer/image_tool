@@ -9,8 +9,8 @@ file_list.sort()
 # b_list = os.listdir(dir_b)
 # b_list.sort()
 flag = 0
-write_txt = open('./defp_2.19_train_crop.txt','w')
-for _,imga in enumerate(file_list[:120]):
+write_txt = open('./defp_2.19_val_crop.txt','w')
+for _,imga in enumerate(file_list[120:]):
     # for _,imga in enumerate(os.listdir(os.path.join(dir,file))):
         #for b_idx, imgb in enumerate(b_list):
         content_a = cv2.imread(os.path.join(img_dir,imga))
@@ -26,20 +26,28 @@ for _,imga in enumerate(file_list[:120]):
 
                 for row in range(content_a.shape[0])[:-1]:
                     con = cv2.cvtColor(content_a,cv2.COLOR_BGR2GRAY)
-                    if min(con[row,line_contine:].flatten())==255 and min(con[row+1,line_contine:].flatten())<255:
-                        startrow = row+1
-                    elif min(con[row,line_contine:].flatten())<255 and min(con[row+1,line_contine:].flatten())==255:
-                        endrow  = row
-                        crop_content = content_a[startrow:endrow,line_contine-1:,:]
-                        crop_lst = []
-                        con_crop = cv2.cvtColor(crop_content, cv2.COLOR_BGR2GRAY)
+                    if np.mean(con[row,line_contine:].flatten())>=253 and np.mean(con[row+1,line_contine:].flatten())<253:
+                        startrow = row
+                    elif startrow is not None and np.mean(con[row,line_contine:].flatten())<253 and np.mean(con[row+1,line_contine:].flatten())>=253:
+                        endrow = row
+                        crop_content1 = content_a[startrow:endrow, line_contine - 1:, :]
+                        # cv2.imshow("",crop_content1)
+                        # cv2.waitKey(1000)
+
+                        if endrow-startrow>15:
+                            crop_content = content_a[startrow:endrow,line_contine-1:,:]
+
+                            crop_lst = []
+                            con_crop = cv2.cvtColor(crop_content, cv2.COLOR_BGR2GRAY)
+                        else:
+                            continue
                         startrow = None
                         endrow = None
                         for line_interva in range(crop_content.shape[1])[:-1]:
-                            if endrow is None and min(con_crop[:,line_interva].flatten())==255 and  min(con_crop[:,line_interva+1].flatten())<255:
-                                startrow = line_interva+1
+                            if endrow is None and np.mean(con_crop[:,line_interva].flatten())>=254 and np.mean(con_crop[:,line_interva+1].flatten())<254:
+                                startrow = line_interva
                                 endrow=None
-                            elif startrow is not None and min(con_crop[:,line_interva].flatten())<255 and min(con_crop[:,line_interva+1].flatten())==255:
+                            elif startrow is not None and np.mean(con_crop[:,line_interva].flatten())<254 and np.mean(con_crop[:,line_interva+1].flatten())>=254:
                                 endrow = line_interva
                                 if endrow-startrow>30:
                                     crop_img = crop_content[:,startrow:endrow,:]
@@ -48,37 +56,45 @@ for _,imga in enumerate(file_list[:120]):
                                     # cv2.waitKey(1000)
                                     startrow = None
                                     endrow = None
+                        if crop_lst == []:
+                            continue
                         line_txt = txt_a.readline()
                         try:
                             txt_lst = line_txt.split(':')[1].split(' ')
                         except:
-                            print(line_txt)
+                            print("3",line_txt)
+                            continue
+                        if line_txt.split(':')[0].split('.')[0] == "":
+                            print("1", line_txt)
+                            continue
                         if "*" in txt_lst:
                             continue
+
                         if len(crop_lst)+1 == len(txt_lst):
 
                             for si,st in enumerate(txt_lst[1:]):
+                                if flag == 659:
+                                    print("no")
                                 # cv2.imshow("",crop_lst[si])
                                 # cv2.waitKey(700)
-                                if line_txt.split(':')[0].split('.')[0] =="":
-                                    print(line_txt)
-                                if st == "":
+                                if st =="" or st == " ":
                                     continue
-
-                                if st =="\n":
-                                    continue
-                                cv2.imwrite("/home/gytang/project/dataset/2019.1.30/crop_train2/"+
+                                cv2.imwrite("/home/gytang/project/dataset/2019.1.30/crop_val/"+
                                             line_txt.split(':')[0].split('.')[0]+'_'+str(flag)+'.jpg',crop_lst[si])
 
                                 if '\n' not in st:
                                     write_txt.write(
-                                        '/iqubicdata/workspace/tanggy/project/rcnn/dataset/2019.1.30/train/'+line_txt.split(':')[0].split('.')[0] + '_' + str(flag) + '.jpg' + ':'+st+'\n')
+                                        '/iqubicdata/workspace/tanggy/project/rcnn/dataset/2019.1.30/val/'+line_txt.split(':')[0].split('.')[0] + '_' + str(flag) + '.jpg' + ':'+st+'\n')
                                 else:
-                                    write_txt.write('/iqubicdata/workspace/tanggy/project/rcnn/dataset/2019.1.30/train/'+
+                                    write_txt.write('/iqubicdata/workspace/tanggy/project/rcnn/dataset/2019.1.30/val/'+
                                         line_txt.split(':')[0].split('.')[0] + '_' + str(
                                             flag) + '.jpg' + ':' + st)
 
+
                                 flag += 1
+                        else:
+                            print(flag)
+                            continue
                 break
         txt_a.close()
 write_txt.close()
